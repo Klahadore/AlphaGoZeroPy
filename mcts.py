@@ -2,26 +2,7 @@
 
 from typing_extensions import Self
 import numpy as np
-# I added my own Stack implementation for performance when moving to Cython
-class Stack:
-    def __init__(self):
-        self.items = []
-
-    def isEmpty(self):
-        return self.items == []
-
-    def push(self, item):
-        self.items.append(item)
-
-    def pop(self):
-        return self.items.pop()
-
-    def peek(self):
-        return self.items[len(self.items)-1]
-
-    def size(self):
-        return len(self.items)
-
+import hashlib
 
 
 class Game_Node():
@@ -32,6 +13,8 @@ class Game_Node():
         self.u = u
         self.n = n
         self.children = []
+
+        self.state_hash = self._get_state_hash(state)
 
     def add_child(self, state, p=0, u=0, n=0):
         # Create a new child node with the current node as its parent
@@ -45,6 +28,12 @@ class Game_Node():
         self.p = 0
         self.u = 0
         self.n = 0
+
+    def _get_state_hash(self, state):
+        state.flags.writeable = False
+        return hashlib.blake2b(state.tobytes(), digest_size=16).hexdigest()
+
+
 
 
 
@@ -64,22 +53,27 @@ class MCTS():
         while current_node.state.is_terminal() == False:
             available_moves = current_node.state.legal_actions()
             p, v = evaluation_func(current_node.state)
+            next_move = UCT(current_node, available_moves)
+            if new_state =
 
 
     def backprpagate(self):
         pass
 
+    # Return move, no, return distribution for things.
     def select(self):
-        pass
+
+        return
 
     # Calculates upper confidence bound for all next moves
     # evaluation_func is the neural network that returns a vector of length 360 (probabilities for each move), and scalar value prediction iof current state
-    def _UCT(self, node, available_moves, evaluation_func):
-        uct = lambda node: node.q + self.exploration_constant * (node.p / (1 + node.n))
+    def _UCT(self, node, available_moves):
 
-        p, v = evaluation_func(node.state)
-        uct_scores = []
-        for i in available_moves():
-            uct_scores.append((i, uct(node)))
+        sum_of_children_n = lambda node: sum(child.n for child in node.children)
+        uct = lambda node: node.q + self.exploration_constant * ((node.p * sum_of_children_n(node)) / (1 + node.n))
 
-        return uct_scores
+        uct_scores = {}
+        for i in available_moves(node):
+            uct_scores[i] = uct(i)
+
+        return max(uct_scores, key=uct_scores.get)
