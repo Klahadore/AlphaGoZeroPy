@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 import numpy as np
 
@@ -35,7 +36,13 @@ def move_to_index(move: int) -> tuple[int, int]:
     return (i, j)
 
 
-def apply_move(player, state, move):
+class pass_move(Enum):
+    terminal = False
+    new_state = State
+# Apply move must assumes player will only play legal move.
+def apply_move(state: State, move: int) -> :
+    if
+    i, j = move_to_index(move)
     pass
 
 def is_terminal(player, state, move):
