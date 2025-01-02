@@ -3,12 +3,12 @@ from dataclasses import dataclass
 import numpy as np
 
 
-BOARD_SIZE = 19
+BOARD_SIZE = 9
 
 
 """
-Player A is -1, plays black pieces, on matrix marked by -1
-Player B is 1, plays white pieces, on matrix marked by 1
+Player A is 1, plays black pieces, on matrix marked by 1
+Player B is 2, plays white pieces, on matrix marked by 2
 If no player has played on position, marked by 0
 """
 @dataclass
@@ -19,41 +19,21 @@ class State():
         self.B_prisoners = B_prisoners
         self.turn = turn
 
-"""
-For use in map reduce on the position matrix.
-If the position is unnocupied, it stays 0
-If the position has
-"""
-def has_liberties(index: tuple[int, int], state: State) -> int:
-    i, j = index
-    piece = state.position[i][j]
-
-    if piece == 0:
-        return 0
-    # Up direction
-    if i > 0 and state.position[i-1][j] == 0:
-        return piece
-    # Down direction
-    if i < BOARD_SIZE - 1 and state.position[i + 1][j] == 0:
-        return 0
-    # Left direction
-    if j > 0 and state.position[i][j] == 0:
-        return 0
-    # Right direction
-    if j < BOARD_SIZE - 1 and state.position[i][j+1] == 0:
-        return 0
-    return piece
-
-
-
-
-
 
 def initialize_state() -> State:
-    return State(np.zeros([19,19]), A_prisoners=0, B_prisoners=0, turn=0)
+    return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, turn=0)
 
-def get_legal_moves(player, state):
-    pass
+# I append the move at the end for the pass move. That is always BOARD_SIZE squared, because indexing starts at 0.
+def get_legal_moves(state:State) -> np.ndarray:
+    flattened_board = state.position.flatten()
+    return np.append(np.where(flattened_board == 0)[0], BOARD_SIZE*BOARD_SIZE)
+
+
+def move_to_index(move: int) -> tuple[int, int]:
+    i = move // BOARD_SIZE
+    j = move % BOARD_SIZE
+    return (i, j)
+
 
 def apply_move(player, state, move):
     pass
