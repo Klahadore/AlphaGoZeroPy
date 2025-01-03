@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import numpy as np
-from enum import Enum
 from typing import Optional
 
 BOARD_SIZE = 9
@@ -12,33 +11,47 @@ Player B is 2, plays white pieces, on matrix marked by 2
 If no player has played on position, marked by 0
 """
 
-class Turn(Enum):
-    A = 1
-    B = 2
-
 @dataclass
 class State():
-    def __init__(self, position: np.ndarray, A_prisoners: int, B_prisoners: int, turn: Turn):
+    def __init__(self, position: np.ndarray, A_prisoners: int, B_prisoners: int, move_num: int):
         self.position = position
         self.A_prisoners = A_prisoners
         self.B_prisoners = B_prisoners
-        self.turn = turn
+        self.move_num = move_num
+        self.previous_move = 0
 
+    # doesn't change value of move_num
+    def color(self) -> int:
+        if self.move_num % 2 == 0:
+            return 1
+        return 2
+    # doesn't change value of move_num
+    def other_color(self):
+        if self.color() == 2:
+            return 1
+        return 2
+
+    def add_prisoners(self, num: int) -> int:
+        if self.color() == 1:
+            self.A_prisoners += num
+            return self.A_prisoners
+        else:
+            assert self.color() == 2
+            self.B_prisoners += num
+            return self.B_prisoners
 
 def initialize_state() -> State:
-    return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, turn=0)
+    return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, move_num=0)
 
 # I append the move at the end for the pass move. That is always BOARD_SIZE squared, because indexing starts at 0.
 def get_legal_moves(state:State) -> np.ndarray:
     flattened_board = state.position.flatten()
     return np.append(np.where(flattened_board == 0)[0], BOARD_SIZE*BOARD_SIZE)
 
-
 def move_to_index(move: int) -> tuple[int, int]:
     i = move // BOARD_SIZE
     j = move % BOARD_SIZE
     return (i, j)
-
 
 # recursive helper function for liberties
 def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited: Optional[set[tuple[int, int]]]) -> tuple[int, set[tuple[int,int]]]:
@@ -48,7 +61,7 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
 
     if visited is None:
         visited = set()
-
+    # Base cases
     if (i,j) in visited:
         return False, visited
     elif i < 0 or i >= BOARD_SIZE or j < 0 or j >= BOARD_SIZE:
@@ -66,12 +79,8 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
     hl2, visited = dfs_for_liberties(i-1, j, position, color, visited)
     hl3, visited = dfs_for_liberties(i, j+1, position, color, visited)
     hl4, visited = dfs_for_liberties(i, j-1, position, color, visited)
-
-
     # By the end, if it doesn't have liberty, then it is set to 0.
     has_liberty = hl1 or hl2 or hl3 or hl4
-    if not has_liberty:
-        position[i][j] = 0
 
     return has_liberty, visited
 
@@ -80,17 +89,41 @@ def apply_move(state: State, move: int):
     # This is to check if its the pass move.
     # If it is, we do nothing except change whose
     if move == BOARD_SIZE * BOARD_SIZE:
-        if state.turn == Turn.A:
-            state.turn = Turn.B
-        else:
-            state.turn = Turn.A
+        state.move_num += 1
         return state
 
-    i, j = move_to_index(move)
 
+    i, j = move_to_index(move)
     # sanity check to make sure its not already taken
     assert state.position[i][j] == 0
 
+    # This changes the state
+    state.position[i][j] = state.color()
+
+    # This modifies state.position matrix
+    # and modifies prisoner count in place
+    def remove_prisoners(state, i, j):
+        has_liberties, indices = dfs_for_liberties(i, j, state.position, state.other_color(), visited=None)
+        if not has_liberties:
+            print("indices", indices)
+            rows, cols = zip(*state.position)
+            state.position[rows, cols] = 0
+            state.add_prisoners(len(indices))
+        else:
+            return
+
+    # We check if the move caused any pieces in the 4 directions to stop having liberties.
+    # If they do, then the state gets modified in place to remove them
+    if i-1 > 0:
+        remove_prisoners(state, i-1, j)
+    if i+1 <= BOARD_SIZE:
+        remove_prisoners(state, i+1, j)
+    if j-1 > 0:
+        remove_prisoners(state, i, j-1)
+    if j+1 <= BOARD_SIZE:
+        remove_prisoners(state, i, j+1)
+
+    state.move_num += 1
 
 
 
