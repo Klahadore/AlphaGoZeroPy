@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import Optional
+from typing import Optional, Self
 
 BOARD_SIZE = 9
 
@@ -20,6 +20,8 @@ class State():
         self.move_num = move_num
         self.previous_move = 0
 
+    def __repr__(self) -> str:
+        return f"Position: {self.position} \n A_prisoners: {self.A_prisoners} B_prisoners: {self.B_prisoners} Move_num: {self.move_num}"
     # doesn't change value of move_num
     def color(self) -> int:
         if self.move_num % 2 == 0:
@@ -40,6 +42,10 @@ class State():
             self.B_prisoners += num
             return self.B_prisoners
 
+    def copy(self):
+        return State(np.copy(self.position), self.A_prisoners, self.B_prisoners, self.move_num)
+
+
 def other_color(color: int) -> int:
     if color == 2:
         return 1
@@ -59,10 +65,12 @@ def move_to_index(move: int) -> tuple[int, int]:
     return (i, j)
 
 # recursive helper function for liberties
+# This does not modify the state
 def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited: Optional[set[tuple[int, int]]]) -> tuple[int, set[tuple[int,int]]]:
     # we store a set of all the indices we visit
     if color not in [1,2]:
         raise Exception("color must either be 1 or 2")
+
 
     if visited is None:
         visited = set()
@@ -89,50 +97,41 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
 
     return has_liberty, visited
 
-# Apply move must assumes player will only play legal moves.
-def apply_move(state: State, move: int):
-    # This is to check if its the pass move.
-    # If it is, we do nothing except change whose
-    if move == BOARD_SIZE * BOARD_SIZE:
-        state.move_num += 1
-        return state
 
+def apply_move(state: State, move: int) -> State:
+    new_state = state.copy()
+
+    if move == BOARD_SIZE * BOARD_SIZE:
+        return new_state
 
     i, j = move_to_index(move)
-    # sanity check to make sure its not already taken
-    assert state.position[i][j] == 0, "cannot play move when there already is a piece there"
+    assert new_state.position[i][j] == 0,  "Error: Cannot play move if there already is a piece there"
 
-    # This changes the state
-    state.position[i][j] = state.color()
+    new_state.position[i][j] = new_state.color()
 
-    # This modifies state.position matrix
-    # and modifies prisoner count in place
-    def remove_prisoners(state: State, i: int, j: int):
-        # something to do with other color, if the piece next to is the same color, doing other_color is the same color, when you need it to be the same color
-        if state.position[i][j] == state.color():
+    def remove_prisoners(new_state: State, i: int, j: int):
+        if new_state.position[i][j] == new_state.color():
             return
-        has_liberties, indices = dfs_for_liberties(i, j, state.position, state.other_color(), visited=None)
 
+        has_liberties, indices = dfs_for_liberties(i, j, new_state.position, new_state.other_color(), visited=None)
         if not has_liberties:
             rows, cols = zip(*indices)
-            state.position[rows, cols] = 0
-            state.add_prisoners(len(indices))
+            new_state.position[rows, cols] = 0
+            new_state.add_prisoners(len(indices))
         else:
             return
 
-    # We check if the move caused any pieces in the 4 directions to stop having liberties.
-    # If they do, then the state gets modified in place to remove them
     if i-1 > 0:
-        remove_prisoners(state, i-1, j)
+        remove_prisoners(new_state, i-1, j)
     if i+1 <= BOARD_SIZE:
-        remove_prisoners(state, i+1, j)
+        remove_prisoners(new_state, i+1, j)
     if j-1 > 0:
-        remove_prisoners(state, i, j-1)
+        remove_prisoners(new_state, i, j-1)
     if j+1 <= BOARD_SIZE:
-        remove_prisoners(state, i, j+1)
+        remove_prisoners(new_state, i, j+1)
 
-    state.move_num += 1
-
+    new_state.move_num += 1
+    return new_state
 
 
 def is_terminal(player, state, move):

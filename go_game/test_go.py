@@ -58,10 +58,10 @@ def test_apply_move():
                         [0, 0, 0, 1, 1],
                         [0, 0, 0, 1, 1]]
     state = State(np.asarray(position), 0, 0, 2)
-    apply_move(state, 12)
-    assert np.array_equal(np.asarray(expected_position), state.position)
-    assert state.A_prisoners == 7
-    assert state.move_num == 3
+    new_state = apply_move(state, 12)
+    assert np.array_equal(np.asarray(expected_position), new_state.position)
+    assert new_state.A_prisoners == 7
+    assert new_state.move_num == 3
 
     expected_position_2 = [[0, 0, 1, 2, 2],
                           [0, 1, 2, 2, 2],
@@ -70,12 +70,12 @@ def test_apply_move():
                           [0, 0, 0, 1, 1]]
 
     state = State(np.asarray(position), 0, 0, move_num=3)
-    apply_move(state, 12)
+    new_state = apply_move(state, 12)
 
-    assert np.array_equal(np.asarray(expected_position_2), state.position)
-    assert state.B_prisoners == 0
-    assert state.A_prisoners == 0
-    assert state.move_num == 4
+    assert np.array_equal(np.asarray(expected_position_2), new_state.position)
+    assert new_state.B_prisoners == 0
+    assert new_state.A_prisoners == 0
+    assert new_state.move_num == 4
 
     expected_position_3 = [[0, 0, 1, 2, 2],
                           [0, 1, 2, 2, 2],
@@ -83,9 +83,17 @@ def test_apply_move():
                           [0, 2, 0, 1, 1],
                           [0, 0, 0, 1, 1]]
     state = State(np.asarray(position), 0, 0, move_num=3)
-    apply_move(state, 16)
-    print(state.position)
-    assert np.array_equal(np.asarray(expected_position_3), state.position)
-    assert state.B_prisoners == 0
-    assert state.A_prisoners == 0
-    assert state.move_num == 4
+    new_state = apply_move(state, 16)
+    assert np.array_equal(np.asarray(expected_position_3), new_state.position)
+    assert new_state.B_prisoners == 0
+    assert new_state.A_prisoners == 0
+    assert new_state.move_num == 4
+
+    expected_position_4 = [[2, 0, 1, 2, 2],
+                            [0, 1, 2, 2, 2],
+                            [0, 0, 0, 2, 2],
+                            [0, 0, 0, 1, 1],
+                            [0, 0, 0, 1, 1]]
+    state = State(np.asarray(position), 0, 0, move_num=3)
+    new_state = apply_move(state, 0)
+    assert np.array_equal(np.asarray(expected_position_4), new_state.position)
