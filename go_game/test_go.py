@@ -40,6 +40,10 @@ def test_dfs_for_liberties():
     evaluation, indices = dfs_for_liberties(4,4, np.asarray(position), 1, None)
     assert evaluation == True
 
+    # test for zero
+    evaluation, indices = dfs_for_liberties(0,0, np.asarray(position), 1, None)
+    assert evaluation == True
+
 def test_apply_move():
     go.BOARD_SIZE = 5
 
@@ -53,8 +57,35 @@ def test_apply_move():
                         [0, 0, 1, 0, 0],
                         [0, 0, 0, 1, 1],
                         [0, 0, 0, 1, 1]]
-    state = State(np.asarray(position), 0, 0, 3)
+    state = State(np.asarray(position), 0, 0, 2)
     apply_move(state, 12)
     assert np.array_equal(np.asarray(expected_position), state.position)
     assert state.A_prisoners == 7
+    assert state.move_num == 3
+
+    expected_position_2 = [[0, 0, 1, 2, 2],
+                          [0, 1, 2, 2, 2],
+                          [0, 0, 2, 2, 2],
+                          [0, 0, 0, 1, 1],
+                          [0, 0, 0, 1, 1]]
+
+    state = State(np.asarray(position), 0, 0, move_num=3)
+    apply_move(state, 12)
+
+    assert np.array_equal(np.asarray(expected_position_2), state.position)
+    assert state.B_prisoners == 0
+    assert state.A_prisoners == 0
+    assert state.move_num == 4
+
+    expected_position_3 = [[0, 0, 1, 2, 2],
+                          [0, 1, 2, 2, 2],
+                          [0, 0, 0, 2, 2],
+                          [0, 2, 0, 1, 1],
+                          [0, 0, 0, 1, 1]]
+    state = State(np.asarray(position), 0, 0, move_num=3)
+    apply_move(state, 16)
+    print(state.position)
+    assert np.array_equal(np.asarray(expected_position_3), state.position)
+    assert state.B_prisoners == 0
+    assert state.A_prisoners == 0
     assert state.move_num == 4

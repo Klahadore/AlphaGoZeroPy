@@ -40,6 +40,11 @@ class State():
             self.B_prisoners += num
             return self.B_prisoners
 
+def other_color(color: int) -> int:
+    if color == 2:
+        return 1
+    return 2
+
 def initialize_state() -> State:
     return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, move_num=0)
 
@@ -68,7 +73,7 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
         return False, visited
     elif position[i][j] == 0:
         return True, visited
-    elif position[i][j] != color:
+    elif position[i][j] == other_color(color):
         return False, visited
 
     visited.add((i,j))
@@ -95,18 +100,21 @@ def apply_move(state: State, move: int):
 
     i, j = move_to_index(move)
     # sanity check to make sure its not already taken
-    assert state.position[i][j] == 0
+    assert state.position[i][j] == 0, "cannot play move when there already is a piece there"
 
     # This changes the state
     state.position[i][j] = state.color()
 
     # This modifies state.position matrix
     # and modifies prisoner count in place
-    def remove_prisoners(state, i, j):
+    def remove_prisoners(state: State, i: int, j: int):
+        # something to do with other color, if the piece next to is the same color, doing other_color is the same color, when you need it to be the same color
+        if state.position[i][j] == state.color():
+            return
         has_liberties, indices = dfs_for_liberties(i, j, state.position, state.other_color(), visited=None)
+
         if not has_liberties:
-            print("indices", indices)
-            rows, cols = zip(*state.position)
+            rows, cols = zip(*indices)
             state.position[rows, cols] = 0
             state.add_prisoners(len(indices))
         else:
