@@ -137,5 +137,69 @@ def apply_move(state: State, move: int) -> State:
 def is_terminal(player, state, move):
     pass
 
-def scoring(state):
-    pass
+def next_square_condition(position: np.ndarray, i: int, j: int, color: int, visited: set[tuple[int, int]]) -> bool:
+    if (i,j) in visited:
+        return False
+    if i < 0 or i >= BOARD_SIZE or j < 0 or j >= BOARD_SIZE:
+        return False
+    piece = position[i][j]
+    if piece != 0:
+        return False
+
+    return True
+
+def neutral_condition(position: np.ndarray, i: int, j: int, color: int) -> bool:
+    if i < 0 or i >= BOARD_SIZE or j < 0 or j >= BOARD_SIZE:
+        return False
+    elif position[i][j] == other_color(color):
+        return True
+    return False
+# This does not modify the state
+def dfs_for_scoring(position: np.ndarray, i_initial: int, j_initial: int, color: int) -> set[tuple[int, int]]:
+    if position[i_initial][j_initial] != 0:
+        raise Exception("Error: initial position must be empty")
+    # visited is a set of tuples
+
+
+    visited = set()
+    squares_to_visit = [] # treated as a stack
+    squares_to_visit.append((i_initial, j_initial))
+    while len(squares_to_visit) != 0:
+        i, j = squares_to_visit.pop()
+        if (
+            neutral_condition(position, i + 1, j, color)
+            or neutral_condition(position, i - 1, j, color)
+            or neutral_condition(position, i, j - 1, color)
+            or neutral_condition(position, i, j + 1, color)
+        ):
+            return set()
+
+
+        if next_square_condition(position, i+1, j, color, visited):
+            squares_to_visit.append((i+1, j))
+        if next_square_condition(position, i-1, j, color, visited):
+            squares_to_visit.append((i-1, j))
+        if next_square_condition(position, i, j+1, color, visited):
+            squares_to_visit.append((i, j+1))
+        if next_square_condition(position, i, j-1, color, visited):
+            squares_to_visit.append((i, j-1))
+
+        if not (i,j) in visited:
+            visited.add((i,j))
+
+    return visited
+
+# depth first search for this.
+# def scoring(state: State) -> tuple[int,int]:
+#     pass
+
+if __name__ == "__main__":
+    BOARD_SIZE = 5
+    position = [[0, 0, 1, 2, 2],
+                [0, 1, 2, 2, 2],
+                [0, 0, 1, 2, 2],
+                [0, 0, 0, 1, 1],
+                [0, 0, 0, 1, 1]]
+
+    v = dfs_for_scoring(np.asarray(position), 0, 0, 1)
+    print(v)

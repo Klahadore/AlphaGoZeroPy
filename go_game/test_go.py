@@ -1,6 +1,6 @@
 import numpy as np
 
-from go import State, get_legal_moves, move_to_index, dfs_for_liberties, apply_move
+from go import State, get_legal_moves, move_to_index, dfs_for_liberties, apply_move, dfs_for_scoring
 import go
 
 def test_move_to_index():
@@ -97,3 +97,42 @@ def test_apply_move():
     state = State(np.asarray(position), 0, 0, move_num=3)
     new_state = apply_move(state, 0)
     assert np.array_equal(np.asarray(expected_position_4), new_state.position)
+
+def test_dfs_for_scoring():
+    go.BOARD_SIZE = 5
+
+    position = [[0, 0, 1, 2, 2],
+                [0, 1, 2, 2, 2],
+                [0, 0, 1, 2, 2],
+                [0, 0, 0, 1, 1],
+                [0, 0, 0, 1, 1]]
+
+
+    assert len(dfs_for_scoring(np.asarray(position), 0, 0, 1)) == 11
+    assert len(dfs_for_scoring(np.asarray(position), 0, 1, 1)) == 11
+    assert len(dfs_for_scoring(np.asarray(position), 2, 1, 1)) == 11
+    assert len(dfs_for_scoring(np.asarray(position), 2, 1, 1)) == 11
+    position = [[0, 0, 1, 2, 0],
+                [0, 1, 2, 0, 0],
+                [0, 0, 1, 2, 2],
+                [0, 0, 0, 1, 1],
+                [0, 0, 0, 1, 1]]
+    assert len(dfs_for_scoring(np.asarray(position), 1, 3, 2)) == 3
+    assert len(dfs_for_scoring(np.asarray(position), 1, 4, 2)) == 3
+    assert len(dfs_for_scoring(np.asarray(position), 0, 4, 2)) == 3
+
+    # test for neutal squares
+    position = [[0, 0, 1, 2, 0],
+                [0, 1, 0, 2, 0],
+                [0, 0, 1, 2, 2],
+                [0, 0, 0, 1, 1],
+                [0, 0, 0, 1, 1]]
+    assert len(dfs_for_scoring(np.asarray(position), 1, 2, 1)) == 0
+    assert len(dfs_for_scoring(np.asarray(position), 1, 2, 2)) == 0
+
+    position = [[0, 0, 1, 2, 0],
+                [0, 1, 0, 2, 1],
+                [0, 0, 1, 2, 2],
+                [0, 0, 0, 1, 1],
+                [0, 0, 0, 1, 1]]
+    assert len(dfs_for_scoring(np.asarray(position), 0, 4, 1)) == 0
