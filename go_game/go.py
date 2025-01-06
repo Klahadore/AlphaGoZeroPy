@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import Optional, Self
-
+from typing import Optional
+import hashlib
 BOARD_SIZE = 9
 
 
@@ -10,7 +10,6 @@ Player A is 1, plays black pieces, on matrix marked by 1
 Player B is 2, plays white pieces, on matrix marked by 2
 If no player has played on position, marked by 0
 """
-
 @dataclass
 class State():
     def __init__(self, position: np.ndarray, A_prisoners: int, B_prisoners: int, move_num: int):
@@ -41,6 +40,11 @@ class State():
             assert self.color() == 2
             self.B_prisoners += num
             return self.B_prisoners
+
+    def get_position_hash(self):
+        self.position.flags.writeable = False
+        return hashlib.blake2b(self.position.tobytes(), digest_size=16).hexdigest()
+
 
     def copy(self):
         return State(np.copy(self.position), self.A_prisoners, self.B_prisoners, self.move_num)
@@ -159,8 +163,6 @@ def dfs_for_scoring(position: np.ndarray, i_initial: int, j_initial: int, color:
     if position[i_initial][j_initial] != 0:
         raise Exception("Error: initial position must be empty")
     # visited is a set of tuples
-
-
     visited = set()
     squares_to_visit = [] # treated as a stack
     squares_to_visit.append((i_initial, j_initial))
@@ -188,18 +190,3 @@ def dfs_for_scoring(position: np.ndarray, i_initial: int, j_initial: int, color:
             visited.add((i,j))
 
     return visited
-
-# depth first search for this.
-# def scoring(state: State) -> tuple[int,int]:
-#     pass
-
-if __name__ == "__main__":
-    BOARD_SIZE = 5
-    position = [[0, 0, 1, 2, 2],
-                [0, 1, 2, 2, 2],
-                [0, 0, 1, 2, 2],
-                [0, 0, 0, 1, 1],
-                [0, 0, 0, 1, 1]]
-
-    v = dfs_for_scoring(np.asarray(position), 0, 0, 1)
-    print(v)

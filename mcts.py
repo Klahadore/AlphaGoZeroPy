@@ -1,24 +1,26 @@
 # Naive implementation in python. Maybe later I'll try to make this faster with a Cython extension or something
 
+import math
 from typing_extensions import Self
 import numpy as np
 import hashlib
 
+from go_game import go
 
 class Game_Node():
-    def __init__(self, state, parent=None, p=0, u=0, n=0):
+    def __init__(self, state, p, n, q, parent=None):
         self.parent = parent
         self.state = state
-        self.p = p
-        self.u = u
-        self.n = n
+        self.P = p
+        self.N = n
+        self.Q = q
         self.children = []
 
-        self.state_hash = self._get_state_hash(state)
+        self.position_hash = state.get_position_hash(state)
 
-    def add_child(self, state, p=0, u=0, n=0):
+    def add_child(self, state, p, n, q):
         # Create a new child node with the current node as its parent
-        child = Game_Node(state, parent=self, p=p, u=u, n=n)
+        child = Game_Node(state, p, n, q, parent=self)
         self.children.append(child)
         return child
 
@@ -29,32 +31,25 @@ class Game_Node():
         self.u = 0
         self.n = 0
 
-    def _get_state_hash(self, state):
-        state.flags.writeable = False
-        return hashlib.blake2b(state.tobytes(), digest_size=16).hexdigest()
+    def get_legal_moves(self) -> np.ndarray:
+        return go.get_legal_moves(self.state.position)
 
-
-
+    def is_terminal(self) -> bool:
+        pass
 
 
 # Fairly generic MCTS, I'm not trying to make it specific to go or anything.
 class MCTS():
-    def __init__(self, root_node: Game_Node, exploration_constant=4):
-        self.root_node = root_node
+    def __init__(self, tree: Game_Node, nn,  exploration_constant=4):
+        self.tree = tree
         self.exploration_constant = exploration_constant
 
-
+        self.nn = nn # neural network function
     def simulate(self, evaluation_func, get_next_state_func):
-        # for i in available_moves():
-        #     next_state = get_next_state_func(i)
-        #     p, v = evaluation_func(next_state)
 
-        current_node = self.root_node
-        while current_node.state.is_terminal() == False:
-            available_moves = current_node.state.legal_actions()
-            p, v = evaluation_func(current_node.state)
-            next_move = UCT(current_node, available_moves)
-            if new_state =
+        available_moves = self.tree.get_legal_moves()
+        while not self.tree.is_terminal():
+
 
 
     def backprpagate(self):
@@ -65,15 +60,17 @@ class MCTS():
 
         return
 
-    # Calculates upper confidence bound for all next moves
-    # evaluation_func is the neural network that returns a vector of length 360 (probabilities for each move), and scalar value prediction iof current state
-    def _UCT(self, node, available_moves):
+    def _UCT(self, node: Game_Node, moves: np.ndarray) -> np.ndarray:
+        # we need the sum of n from all other moves
+        N_b = 0
+        for i in node.children:
+            N_b += i.N
 
-        sum_of_children_n = lambda node: sum(child.n for child in node.children)
-        uct = lambda node: node.q + self.exploration_constant * ((node.p * sum_of_children_n(node)) / (1 + node.n))
+        uct_func = lambda p, q, n: q + self.exploration_constant * (p * math.sqrt(N_b-n)) / (1 + n)
 
-        uct_scores = {}
-        for i in available_moves(node):
-            uct_scores[i] = uct(i)
+        move_to_uct = {}
+        for move in moves:
+            new_state = go.apply_move(node.state, move)
+            state_hash = get_state_hash()
 
-        return max(uct_scores, key=uct_scores.get)
+            move_to_uct[move] = uct_func(new_state.p)
