@@ -13,8 +13,8 @@ def test_move_to_index():
 def test_get_legal_moves():
     go.BOARD_SIZE = 3
     position = [[0, 0, 1],
-                [2, 1, 0],
-                [0, 1, 2]]
+                [-1, 1, 0],
+                [0, 1, -1]]
     test_state = State(np.asarray(position), 0, 0, move_num=30)
     legal_moves = get_legal_moves(test_state)
     expected_moves = np.asarray([0, 1, 5, 6, 9])
@@ -23,13 +23,13 @@ def test_get_legal_moves():
 def test_dfs_for_liberties():
     go.BOARD_SIZE = 5
 
-    position = [[0, 0, 1, 2, 2],
-                [0, 1, 2, 2, 2],
-                [0, 0, 1, 2, 2],
+    position = [[0, 0, 1, -1, -1],
+                [0, 1, -1, -1, -1],
+                [0, 0, 1, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
 
-    evaluation, indices = dfs_for_liberties(0, 3, np.asarray(position), 2, None)
+    evaluation, indices = dfs_for_liberties(0, 3, np.asarray(position), -1, None)
     assert evaluation == False
     assert indices == {(0,3), (0,4), (1,2), (1,3), (1,4), (2,3), (2,4)}
 
@@ -47,9 +47,9 @@ def test_dfs_for_liberties():
 def test_apply_move():
     go.BOARD_SIZE = 5
 
-    position = [[0, 0, 1, 2, 2],
-                [0, 1, 2, 2, 2],
-                [0, 0, 0, 2, 2],
+    position = [[0, 0, 1, -1, -1],
+                [0, 1, -1, -1, -1],
+                [0, 0, 0, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
     expected_position = [[0, 0, 1, 0, 0],
@@ -63,9 +63,9 @@ def test_apply_move():
     assert new_state.A_prisoners == 7
     assert new_state.move_num == 3
 
-    expected_position_2 = [[0, 0, 1, 2, 2],
-                          [0, 1, 2, 2, 2],
-                          [0, 0, 2, 2, 2],
+    expected_position_2 = [[0, 0, 1, -1, -1],
+                          [0, 1, -1, -1, -1],
+                          [0, 0, -1, -1, -1],
                           [0, 0, 0, 1, 1],
                           [0, 0, 0, 1, 1]]
 
@@ -77,10 +77,10 @@ def test_apply_move():
     assert new_state.A_prisoners == 0
     assert new_state.move_num == 4
 
-    expected_position_3 = [[0, 0, 1, 2, 2],
-                          [0, 1, 2, 2, 2],
-                          [0, 0, 0, 2, 2],
-                          [0, 2, 0, 1, 1],
+    expected_position_3 = [[0, 0, 1, -1, -1],
+                          [0, 1, -1, -1, -1],
+                          [0, 0, 0, -1, -1],
+                          [0, -1, 0, 1, 1],
                           [0, 0, 0, 1, 1]]
     state = State(np.asarray(position), 0, 0, move_num=3)
     new_state = apply_move(state, 16)
@@ -89,9 +89,9 @@ def test_apply_move():
     assert new_state.A_prisoners == 0
     assert new_state.move_num == 4
 
-    expected_position_4 = [[2, 0, 1, 2, 2],
-                            [0, 1, 2, 2, 2],
-                            [0, 0, 0, 2, 2],
+    expected_position_4 = [[-1, 0, 1, -1, -1],
+                            [0, 1, -1, -1, -1],
+                            [0, 0, 0, -1, -1],
                             [0, 0, 0, 1, 1],
                             [0, 0, 0, 1, 1]]
     state = State(np.asarray(position), 0, 0, move_num=3)
@@ -101,9 +101,9 @@ def test_apply_move():
 def test_dfs_for_scoring():
     go.BOARD_SIZE = 5
 
-    position = [[0, 0, 1, 2, 2],
-                [0, 1, 2, 2, 2],
-                [0, 0, 1, 2, 2],
+    position = [[0, 0, 1, -1, -1],
+                [0, 1, -1, -1, -1],
+                [0, 0, 1, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
 
@@ -112,27 +112,27 @@ def test_dfs_for_scoring():
     assert len(dfs_for_scoring(np.asarray(position), 0, 1, 1)) == 11
     assert len(dfs_for_scoring(np.asarray(position), 2, 1, 1)) == 11
     assert len(dfs_for_scoring(np.asarray(position), 2, 1, 1)) == 11
-    position = [[0, 0, 1, 2, 0],
-                [0, 1, 2, 0, 0],
-                [0, 0, 1, 2, 2],
+    position = [[0, 0, 1, -1, 0],
+                [0, 1, -1, 0, 0],
+                [0, 0, 1, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
-    assert len(dfs_for_scoring(np.asarray(position), 1, 3, 2)) == 3
-    assert len(dfs_for_scoring(np.asarray(position), 1, 4, 2)) == 3
-    assert len(dfs_for_scoring(np.asarray(position), 0, 4, 2)) == 3
+    assert len(dfs_for_scoring(np.asarray(position), 1, 3, -1)) == 3
+    assert len(dfs_for_scoring(np.asarray(position), 1, 4, -1)) == 3
+    assert len(dfs_for_scoring(np.asarray(position), 0, 4, -1)) == 3
 
     # test for neutal squares
-    position = [[0, 0, 1, 2, 0],
-                [0, 1, 0, 2, 0],
-                [0, 0, 1, 2, 2],
+    position = [[0, 0, 1, -1, 0],
+                [0, 1, 0, -1, 0],
+                [0, 0, 1, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
     assert len(dfs_for_scoring(np.asarray(position), 1, 2, 1)) == 0
     assert len(dfs_for_scoring(np.asarray(position), 1, 2, 2)) == 0
 
-    position = [[0, 0, 1, 2, 0],
-                [0, 1, 0, 2, 1],
-                [0, 0, 1, 2, 2],
+    position = [[0, 0, 1, -1, 0],
+                [0, 1, 0, -1, 1],
+                [0, 0, 1, -1, -1],
                 [0, 0, 0, 1, 1],
                 [0, 0, 0, 1, 1]]
     assert len(dfs_for_scoring(np.asarray(position), 0, 4, 1)) == 0

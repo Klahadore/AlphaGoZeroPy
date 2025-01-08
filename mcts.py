@@ -14,14 +14,14 @@ class Game_Node():
         self.P = p
         self.N = n
         self.Q = q
-        self.children = []
+        self.children = dict()
 
         self.position_hash = state.get_position_hash(state)
 
     def add_child(self, state, p, n, q):
         # Create a new child node with the current node as its parent
         child = Game_Node(state, p, n, q, parent=self)
-        self.children.append(child)
+        self.children[child.position_hash] = child
         return child
 
     def clear_children_and_parent_and_reset_stats(self):
@@ -45,11 +45,14 @@ class MCTS():
         self.exploration_constant = exploration_constant
 
         self.nn = nn # neural network function
+
     def simulate(self, evaluation_func, get_next_state_func):
 
-        available_moves = self.tree.get_legal_moves()
+
+
         while not self.tree.is_terminal():
 
+            pass
 
 
     def backprpagate(self):
@@ -60,17 +63,26 @@ class MCTS():
 
         return
 
-    def _UCT(self, node: Game_Node, moves: np.ndarray) -> np.ndarray:
-        # we need the sum of n from all other moves
+
+    # Returns the move with the highest UCT score
+    def _one_layer_simulate(self, start_node: Game_Node) -> int:
         N_b = 0
-        for i in node.children:
-            N_b += i.N
+        for child in start_node.children.values():
+            N_b += child.N
 
-        uct_func = lambda p, q, n: q + self.exploration_constant * (p * math.sqrt(N_b-n)) / (1 + n)
+        uct_func = lambda p, q, n: q + self.exploration_constant * (p * math.sqrt(N_b)) / (1 + n)
 
-        move_to_uct = {}
-        for move in moves:
-            new_state = go.apply_move(node.state, move)
-            state_hash = get_state_hash()
+        available_moves = start_node.get_legal_moves()
+        move_UCT_map = {}
+        for move in available_moves:
+            state = go.apply_move(start_node.state, move)
+            hash = go.get_position_hash(state.position)
+            if hash in start_node.children:
+                child = start_node.children[hash]
+                move_UCT_map[move] = uct_func(child.p, child.q, child.n)
+            else:
+                p, _ = self.nn(state)
+                move_UCT_map[move] = uct_func(p, 0, 0)
 
-            move_to_uct[move] = uct_func(new_state.p)
+
+        return max(move_UCT_map, key=move_UCT_map.get)

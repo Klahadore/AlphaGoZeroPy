@@ -10,7 +10,6 @@ Player A is 1, plays black pieces, on matrix marked by 1
 Player B is 2, plays white pieces, on matrix marked by 2
 If no player has played on position, marked by 0
 """
-@dataclass
 class State():
     def __init__(self, position: np.ndarray, A_prisoners: int, B_prisoners: int, move_num: int):
         self.position = position
@@ -25,12 +24,12 @@ class State():
     def color(self) -> int:
         if self.move_num % 2 == 0:
             return 1
-        return 2
+        return -1
     # doesn't change value of move_num
     def other_color(self):
-        if self.color() == 2:
-            return 1
-        return 2
+        if self.color() == 1:
+            return -1
+        return 1
 
     def add_prisoners(self, num: int) -> int:
         if self.color() == 1:
@@ -41,19 +40,20 @@ class State():
             self.B_prisoners += num
             return self.B_prisoners
 
-    def get_position_hash(self):
-        self.position.flags.writeable = False
-        return hashlib.blake2b(self.position.tobytes(), digest_size=16).hexdigest()
+    def get_position_hash(self, position: np.ndarray):
+        return hashlib.blake2b(position.tobytes(), digest_size=16).hexdigest()
 
 
     def copy(self):
         return State(np.copy(self.position), self.A_prisoners, self.B_prisoners, self.move_num)
 
+def get_position_hash(position: np.ndarray):
+    return hashlib.blake2b(position.tobytes(), digest_size=16).hexdigest()
 
 def other_color(color: int) -> int:
-    if color == 2:
+    if color == -1:
         return 1
-    return 2
+    return -1
 
 def initialize_state() -> State:
     return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, move_num=0)
@@ -72,8 +72,8 @@ def move_to_index(move: int) -> tuple[int, int]:
 # This does not modify the state
 def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited: Optional[set[tuple[int, int]]]) -> tuple[int, set[tuple[int,int]]]:
     # we store a set of all the indices we visit
-    if color not in [1,2]:
-        raise Exception("color must either be 1 or 2")
+    if color not in [1,-1]:
+        raise Exception("color must either be 1 or -1")
 
 
     if visited is None:
@@ -96,7 +96,7 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
     hl2, visited = dfs_for_liberties(i-1, j, position, color, visited)
     hl3, visited = dfs_for_liberties(i, j+1, position, color, visited)
     hl4, visited = dfs_for_liberties(i, j-1, position, color, visited)
-    # By the end, if it doesn't have liberty, then it is set to 0.
+
     has_liberty = hl1 or hl2 or hl3 or hl4
 
     return has_liberty, visited
