@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 from typing import Optional
-
+import hashlib
 BOARD_SIZE = 9
 
 
@@ -10,8 +10,6 @@ Player A is 1, plays black pieces, on matrix marked by 1
 Player B is 2, plays white pieces, on matrix marked by 2
 If no player has played on position, marked by 0
 """
-
-@dataclass
 class State():
     def __init__(self, position: np.ndarray, A_prisoners: int, B_prisoners: int, move_num: int):
         self.position = position
@@ -20,16 +18,18 @@ class State():
         self.move_num = move_num
         self.previous_move = 0
 
+    def __repr__(self) -> str:
+        return f"Position: {self.position} \n A_prisoners: {self.A_prisoners} B_prisoners: {self.B_prisoners} Move_num: {self.move_num}"
     # doesn't change value of move_num
     def color(self) -> int:
         if self.move_num % 2 == 0:
             return 1
-        return 2
+        return -1
     # doesn't change value of move_num
     def other_color(self):
-        if self.color() == 2:
-            return 1
-        return 2
+        if self.color() == 1:
+            return -1
+        return 1
 
     def add_prisoners(self, num: int) -> int:
         if self.color() == 1:
@@ -39,6 +39,21 @@ class State():
             assert self.color() == 2
             self.B_prisoners += num
             return self.B_prisoners
+
+    def get_position_hash(self, position: np.ndarray):
+        return hashlib.blake2b(position.tobytes(), digest_size=16).hexdigest()
+
+
+    def copy(self):
+        return State(np.copy(self.position), self.A_prisoners, self.B_prisoners, self.move_num)
+
+def get_position_hash(position: np.ndarray):
+    return hashlib.blake2b(position.tobytes(), digest_size=16).hexdigest()
+
+def other_color(color: int) -> int:
+    if color == -1:
+        return 1
+    return -1
 
 def initialize_state() -> State:
     return State(np.zeros([BOARD_SIZE,BOARD_SIZE]), A_prisoners=0, B_prisoners=0, move_num=0)
@@ -54,10 +69,12 @@ def move_to_index(move: int) -> tuple[int, int]:
     return (i, j)
 
 # recursive helper function for liberties
+# This does not modify the state
 def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited: Optional[set[tuple[int, int]]]) -> tuple[int, set[tuple[int,int]]]:
     # we store a set of all the indices we visit
-    if color not in [1,2]:
-        raise Exception("color must either be 1 or 2")
+    if color not in [1,-1]:
+        raise Exception("color must either be 1 or -1")
+
 
     if visited is None:
         visited = set()
@@ -68,7 +85,7 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
         return False, visited
     elif position[i][j] == 0:
         return True, visited
-    elif position[i][j] != color:
+    elif position[i][j] == other_color(color):
         return False, visited
 
     visited.add((i,j))
@@ -79,56 +96,97 @@ def dfs_for_liberties(i: int, j: int, position: np.ndarray, color: int, visited:
     hl2, visited = dfs_for_liberties(i-1, j, position, color, visited)
     hl3, visited = dfs_for_liberties(i, j+1, position, color, visited)
     hl4, visited = dfs_for_liberties(i, j-1, position, color, visited)
-    # By the end, if it doesn't have liberty, then it is set to 0.
+
     has_liberty = hl1 or hl2 or hl3 or hl4
 
     return has_liberty, visited
 
-# Apply move must assumes player will only play legal moves.
-def apply_move(state: State, move: int):
-    # This is to check if its the pass move.
-    # If it is, we do nothing except change whose
-    if move == BOARD_SIZE * BOARD_SIZE:
-        state.move_num += 1
-        return state
 
+def apply_move(state: State, move: int) -> State:
+    new_state = state.copy()
+
+    if move == BOARD_SIZE * BOARD_SIZE:
+        return new_state
 
     i, j = move_to_index(move)
-    # sanity check to make sure its not already taken
-    assert state.position[i][j] == 0
+    assert new_state.position[i][j] == 0,  "Error: Cannot play move if there already is a piece there"
 
-    # This changes the state
-    state.position[i][j] = state.color()
+    new_state.position[i][j] = new_state.color()
 
-    # This modifies state.position matrix
-    # and modifies prisoner count in place
-    def remove_prisoners(state, i, j):
-        has_liberties, indices = dfs_for_liberties(i, j, state.position, state.other_color(), visited=None)
+    def remove_prisoners(new_state: State, i: int, j: int):
+        if new_state.position[i][j] == new_state.color():
+            return
+
+        has_liberties, indices = dfs_for_liberties(i, j, new_state.position, new_state.other_color(), visited=None)
         if not has_liberties:
-            print("indices", indices)
-            rows, cols = zip(*state.position)
-            state.position[rows, cols] = 0
-            state.add_prisoners(len(indices))
+            rows, cols = zip(*indices)
+            new_state.position[rows, cols] = 0
+            new_state.add_prisoners(len(indices))
         else:
             return
 
-    # We check if the move caused any pieces in the 4 directions to stop having liberties.
-    # If they do, then the state gets modified in place to remove them
     if i-1 > 0:
-        remove_prisoners(state, i-1, j)
+        remove_prisoners(new_state, i-1, j)
     if i+1 <= BOARD_SIZE:
-        remove_prisoners(state, i+1, j)
+        remove_prisoners(new_state, i+1, j)
     if j-1 > 0:
-        remove_prisoners(state, i, j-1)
+        remove_prisoners(new_state, i, j-1)
     if j+1 <= BOARD_SIZE:
-        remove_prisoners(state, i, j+1)
+        remove_prisoners(new_state, i, j+1)
 
-    state.move_num += 1
-
+    new_state.move_num += 1
+    return new_state
 
 
 def is_terminal(player, state, move):
     pass
 
-def scoring(state):
-    pass
+def next_square_condition(position: np.ndarray, i: int, j: int, color: int, visited: set[tuple[int, int]]) -> bool:
+    if (i,j) in visited:
+        return False
+    if i < 0 or i >= BOARD_SIZE or j < 0 or j >= BOARD_SIZE:
+        return False
+    piece = position[i][j]
+    if piece != 0:
+        return False
+
+    return True
+
+def neutral_condition(position: np.ndarray, i: int, j: int, color: int) -> bool:
+    if i < 0 or i >= BOARD_SIZE or j < 0 or j >= BOARD_SIZE:
+        return False
+    elif position[i][j] == other_color(color):
+        return True
+    return False
+# This does not modify the state
+def dfs_for_scoring(position: np.ndarray, i_initial: int, j_initial: int, color: int) -> set[tuple[int, int]]:
+    if position[i_initial][j_initial] != 0:
+        raise Exception("Error: initial position must be empty")
+    # visited is a set of tuples
+    visited = set()
+    squares_to_visit = [] # treated as a stack
+    squares_to_visit.append((i_initial, j_initial))
+    while len(squares_to_visit) != 0:
+        i, j = squares_to_visit.pop()
+        if (
+            neutral_condition(position, i + 1, j, color)
+            or neutral_condition(position, i - 1, j, color)
+            or neutral_condition(position, i, j - 1, color)
+            or neutral_condition(position, i, j + 1, color)
+        ):
+            return set()
+
+
+        if next_square_condition(position, i+1, j, color, visited):
+            squares_to_visit.append((i+1, j))
+        if next_square_condition(position, i-1, j, color, visited):
+            squares_to_visit.append((i-1, j))
+        if next_square_condition(position, i, j+1, color, visited):
+            squares_to_visit.append((i, j+1))
+        if next_square_condition(position, i, j-1, color, visited):
+            squares_to_visit.append((i, j-1))
+
+        if not (i,j) in visited:
+            visited.add((i,j))
+
+    return visited
